@@ -1,129 +1,153 @@
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('script loaded')
     const searchBox = document.getElementById('searchBox');
     const chatgptBtn = document.getElementById('chatgptBtn');
     const googleBtn = document.getElementById('googleBtn');
     const perplexityBtn = document.getElementById('perplexityBtn');
+    const allDropdowns = document.querySelectorAll('.search-options');
 
-    // Handle search with different engines
-    chatgptBtn.addEventListener('click', () => {
-        const query = searchBox.value.trim();
-        if (query) {
-            chrome.tabs.create({
-                url: `https://chat.openai.com/?q=${encodeURIComponent(query)}`
-            });
-        }
+    // Search engine options
+    let currentChatGPTOption = 'web';
+    let currentGoogleOption = 'regular';
+    let currentPerplexityOption = 'auto';
+
+    // Load user preferences
+    chrome.storage.sync.get(['chatgptOption', 'googleOption', 'perplexityOption'], (data) => {
+        currentChatGPTOption = data.chatgptOption || 'web';
+        currentGoogleOption = data.googleOption || 'regular';
+        currentPerplexityOption = data.perplexityOption || 'auto';
     });
 
-    googleBtn.addEventListener('click', () => {
+    // Close all dropdowns
+    function closeAllDropdowns() {
+        allDropdowns.forEach(dropdown => dropdown.classList.remove('show'));
+    }
+
+    // Handle dropdowns
+    function setupDropdown(btnId, optionsId, storageKey) {
+        const btn = document.getElementById(btnId);
+        const options = document.getElementById(optionsId);
+        const btnIcon = btn.querySelector('img');
+
+        // Separate click handlers for the button icon (search) and dropdown arrow
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            // Check if the click target is the dropdown part (text or arrow)
+            const isDropdownClick = e.target === btn ||
+                (!e.target.matches('img') && e.target.closest('button') === btn);
+
+            if (isDropdownClick) {
+                // Close other dropdowns before opening this one
+                allDropdowns.forEach(dropdown => {
+                    if (dropdown !== options) {
+                        dropdown.classList.remove('show');
+                    }
+                });
+
+                // Toggle this dropdown
+                options.classList.toggle('show');
+            } else if (e.target === btnIcon) {
+                // If icon is clicked, perform search
+                performSearch(btnId);
+            }
+        });
+
+        options.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling to button
+
+            if (e.target.classList.contains('search-option')) {
+                const value = e.target.dataset.value;
+
+                // Update the option first
+                switch (storageKey) {
+                    case 'chatgptOption': currentChatGPTOption = value; break;
+                    case 'googleOption': currentGoogleOption = value; break;
+                    case 'perplexityOption': currentPerplexityOption = value; break;
+                }
+                chrome.storage.sync.set({ [storageKey]: value });
+
+                // Now perform the search with the selected option
+                performSearch(btnId, value);
+
+                closeAllDropdowns();
+            }
+        });
+    }
+
+    // Perform search based on button clicked and option selected
+    function performSearch(btnId, specificOption = null) {
         const query = searchBox.value.trim();
-        if (query) {
-            chrome.tabs.create({
-                url: `https://www.google.com/search?q=${encodeURIComponent(query)}`
-            });
+        if (!query) return;
+
+        switch (btnId) {
+            case 'chatgptBtn':
+                const chatgptBaseUrl = 'https://chat.openai.com/';
+                // Use specificOption if provided, otherwise use saved preference
+                const chatgptOption = specificOption || currentChatGPTOption;
+                const chatgptUrl = chatgptOption === 'web'
+                    ? `${chatgptBaseUrl}?web=1&q=${encodeURIComponent(query)}`
+                    : `${chatgptBaseUrl}?q=${encodeURIComponent(query)}`;
+                chrome.tabs.create({ url: chatgptUrl });
+                break;
+
+            case 'googleBtn':
+                let googleUrl = 'https://www.google.com/search?q=';
+                // Use specificOption if provided, otherwise use saved preference
+                const googleOption = specificOption || currentGoogleOption;
+                switch (googleOption) {
+                    case 'flash':
+                        googleUrl = 'https://gemini.google.com/app?model=gemini-2.0-flash-001&q=';
+                        break;
+                    case 'experimental':
+                        googleUrl = 'https://gemini.google.com/app?model=gemini-2.0-flash-thinking-exp-01-21&q=';
+                        break;
+                }
+                chrome.tabs.create({ url: googleUrl + encodeURIComponent(query) });
+                break;
+
+            case 'perplexityBtn':
+                let perplexityUrl = 'https://www.perplexity.ai/';
+                // Use specificOption if provided, otherwise use saved preference
+                const perplexityOption = specificOption || currentPerplexityOption;
+                switch (perplexityOption) {
+                    case 'deep':
+                        perplexityUrl += 'deep?q=';
+                        break;
+                    case 'o3mini':
+                        perplexityUrl += 'search/o3mini?q=';
+                        break;
+                    case 'r1':
+                        perplexityUrl += 'search/r1?q=';
+                        break;
+                    default:
+                        perplexityUrl += '?q=';
+                }
+                chrome.tabs.create({ url: perplexityUrl + encodeURIComponent(query) });
+                break;
         }
+    }
+
+    setupDropdown('chatgptBtn', 'chatgptOptions', 'chatgptOption');
+    setupDropdown('googleBtn', 'googleOptions', 'googleOption');
+    setupDropdown('perplexityBtn', 'perplexityOptions', 'perplexityOption');
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+        closeAllDropdowns();
     });
 
-    perplexityBtn.addEventListener('click', () => {
-        const query = searchBox.value.trim();
-        if (query) {
-            chrome.tabs.create({
-                url: `https://www.perplexity.ai/?q=${encodeURIComponent(query)}`
-            });
-        }
-    });
+    // Handle search when clicking the main button (not dropdown)
+    chatgptBtn.querySelector('img').addEventListener('click', () => performSearch('chatgptBtn'));
+    googleBtn.querySelector('img').addEventListener('click', () => performSearch('googleBtn'));
+    perplexityBtn.querySelector('img').addEventListener('click', () => performSearch('perplexityBtn'));
 
     // Handle Enter key in search box
     searchBox.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             const query = searchBox.value.trim();
             if (query) {
-                // Default to Google search on Enter
-                chrome.tabs.create({
-                    url: `https://www.google.com/search?q=${encodeURIComponent(query)}`
-                });
+                chrome.search.query({ text: query });
             }
         }
     });
-
-    const bookmarksContainer = document.querySelector('.bookmarks-grid');
-
-    function fetchBookmarks() {
-        chrome.bookmarks.getTree((bookmarkTreeNodes) => {
-            displayBookmarks(bookmarkTreeNodes, bookmarksContainer);
-        });
-    }
-
-    function displayBookmarks(bookmarkNodes, container) {
-        container.innerHTML = '';
-
-        bookmarkNodes.forEach(node => {
-            if (node.children) {
-                displayBookmarks(node.children, container);
-            } else if (node.url) {
-                // Create a bookmark link
-                const link = document.createElement('a');
-                link.href = node.url;
-                link.className = 'bookmark-card';
-                link.target = "_blank";
-                link.innerHTML = `<img src="https://www.google.com/s2/favicons?sz=32&domain=${node.url}" alt="Bookmark Icon"> <span class="bookmark-title">${node.title}</span>`;
-
-                container.appendChild(link);
-            }
-        });
-    }
-
-    fetchBookmarks();
-
-    async function fetchTechNews() {
-        const newsGrid = document.querySelector('.news-grid');
-
-        try {
-            // Fetch news from TechCrunch API
-            const response = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://techcrunch.com/wp-json/wp/v2/posts?per_page=3'));
-            const data = await response.json();
-            const articles = JSON.parse(data.contents);
-
-            // Remove skeleton loaders
-            newsGrid.innerHTML = '';
-
-            // Populate news articles
-            articles.forEach(article => {
-                const card = document.createElement('a');
-                card.className = 'news-card';
-                card.href = article.link;
-                card.target = "_blank";
-                card.innerHTML = `
-                    <img src="${article.jetpack_featured_media_url || '/icons/news-placeholder.png'}" 
-                         alt="${article.title.rendered}" 
-                         class="news-image">
-                    <div class="news-content">
-                        <h3 class="news-title">${article.title.rendered}</h3>
-                        <div class="news-meta">
-                            <span>TechCrunch</span>
-                            <span>${getTimeAgo(new Date(article.date))}</span>
-                        </div>
-                    </div>
-                `;
-
-                newsGrid.appendChild(card);
-            });
-        } catch (error) {
-            console.error('Error fetching news:', error);
-        }
-    }
-
-
-    function getTimeAgo(date) {
-        const now = new Date();
-        const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-
-        if (diffInHours < 1) return 'Just now';
-        if (diffInHours === 1) return '1h';
-        if (diffInHours < 24) return `${diffInHours}h`;
-        return `${Math.floor(diffInHours / 24)}d`;
-    }
-
-    // Load news when popup opens
-    fetchTechNews();
 });
