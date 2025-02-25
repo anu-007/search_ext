@@ -5,17 +5,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const perplexityBtn = document.getElementById('perplexityBtn');
     const allDropdowns = document.querySelectorAll('.search-options');
 
-    // Search engine options
+    // Default search engine options (no longer loaded from storage)
     let currentChatGPTOption = 'web';
     let currentGoogleOption = 'regular';
     let currentPerplexityOption = 'auto';
-
-    // Load user preferences
-    chrome.storage.sync.get(['chatgptOption', 'googleOption', 'perplexityOption'], (data) => {
-        currentChatGPTOption = data.chatgptOption || 'web';
-        currentGoogleOption = data.googleOption || 'regular';
-        currentPerplexityOption = data.perplexityOption || 'auto';
-    });
 
     // Close all dropdowns
     function closeAllDropdowns() {
@@ -23,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Handle dropdowns
-    function setupDropdown(btnId, optionsId, storageKey) {
+    function setupDropdown(btnId, optionsId, optionVar) {
         const btn = document.getElementById(btnId);
         const options = document.getElementById(optionsId);
         const btnIcon = btn.querySelector('img');
@@ -58,13 +51,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target.classList.contains('search-option')) {
                 const value = e.target.dataset.value;
 
-                // Update the option first
-                switch (storageKey) {
+                // Update the option in memory (but don't save to storage)
+                switch (optionVar) {
                     case 'chatgptOption': currentChatGPTOption = value; break;
                     case 'googleOption': currentGoogleOption = value; break;
                     case 'perplexityOption': currentPerplexityOption = value; break;
                 }
-                chrome.storage.sync.set({ [storageKey]: value });
 
                 // Now perform the search with the selected option
                 performSearch(btnId, value);
@@ -82,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
         switch (btnId) {
             case 'chatgptBtn':
                 const chatgptBaseUrl = 'https://chat.openai.com/';
-                // Use specificOption if provided, otherwise use saved preference
+                // Use specificOption if provided, otherwise use current option
                 const chatgptOption = specificOption || currentChatGPTOption;
                 const chatgptUrl = chatgptOption === 'web'
                     ? `${chatgptBaseUrl}?web=1&q=${encodeURIComponent(query)}`
@@ -92,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case 'googleBtn':
                 let googleUrl = 'https://www.google.com/search?q=';
-                // Use specificOption if provided, otherwise use saved preference
+                // Use specificOption if provided, otherwise use current option
                 const googleOption = specificOption || currentGoogleOption;
                 switch (googleOption) {
                     case 'flash':
@@ -107,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case 'perplexityBtn':
                 let perplexityUrl = 'https://www.perplexity.ai/';
-                // Use specificOption if provided, otherwise use saved preference
+                // Use specificOption if provided, otherwise use current option
                 const perplexityOption = specificOption || currentPerplexityOption;
                 switch (perplexityOption) {
                     case 'deep':

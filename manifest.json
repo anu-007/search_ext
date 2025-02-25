@@ -4,7 +4,6 @@
     "version": "1.0",
     "description": "Enhanced new tab page with smart search capabilities",
     "permissions": [
-        "storage",
         "search"
     ],
     "chrome_url_overrides": {
