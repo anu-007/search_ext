@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Smart Search New Tab",
-    "version": "1.0",
+    "version": "1.1",
     "description": "Enhanced new tab page with smart search capabilities",
     "permissions": [
         "search"
