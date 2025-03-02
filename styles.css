@@ -1,0 +1,40 @@
+.container {
+    padding: 10px;
+    width: 600px;
+}
+
+#searchBox {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#searchBox::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+button:hover {
+    background-color: #f0f0f0;
+    border-radius: 4px;
+}
+
+button img {
+    width: 24px;
+    height: 24px;
+}
